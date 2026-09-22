@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Nutrición y Entrenamiento</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #10b981;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --sidebar-bg: #0f172a;
+            --sidebar-hover: #1e293b;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        h1, h2, h3, .month-title { font-family: 'Montserrat', sans-serif; }
+
+        /* --- MENÚ LATERAL --- */
+        .sidebar { 
+            width: 80px; background: var(--sidebar-bg); display: flex; flex-direction: column; 
+            align-items: center; padding-top: 30px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 100; flex-shrink: 0; box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+        }
+        .sidebar:hover { width: 220px; }
+        .sidebar:hover .menu-text { opacity: 1; display: inline-block; }
+        
+        .menu-btn { 
+            width: 100%; padding: 20px; text-align: left; background: none; border: none; 
+            cursor: pointer; font-size: 1.2rem; color: #94a3b8; display: flex; align-items: center; 
+            justify-content: center; transition: 0.2s; border-left: 4px solid transparent;
+        }
+        .sidebar:hover .menu-btn { justify-content: flex-start; padding-left: 25px; }
+        .menu-btn:hover { color: white; background: var(--sidebar-hover); }
+        .menu-btn.active { color: white; background: var(--sidebar-hover); border-left-color: var(--primary); }
+        .menu-btn i { font-size: 1.4rem; width: 35px; text-align: center; }
+        .menu-text { opacity: 0; display: none; margin-left: 15px; font-size: 1.05rem; font-weight: 600; white-space: nowrap; transition: opacity 0.3s; }
+
+        /* --- CONTENIDO PRINCIPAL --- */
+        .content { flex: 1; padding: 25px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .section { display: none; height: 100%; flex-direction: column; }
+        .section.active { display: flex; }
+        
+        h1 { margin-bottom: 20px; font-size: 1.8rem; color: var(--text-main); flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
+        h1 i { color: var(--primary); }
+
+        /* --- SELECTOR DE MESES --- */
+        .month-selector { display: flex; gap: 10px; margin-bottom: 20px; flex-shrink: 0; background: white; padding: 10px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .month-btn { flex: 1; padding: 12px 5px; background: transparent; color: var(--text-muted); border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: all 0.2s; text-align: center; font-family: 'Montserrat', sans-serif; }
+        .month-btn:hover { background: #e0e7ff; color: var(--primary); }
+        .month-btn.active { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4); transform: translateY(-2px); }
+
+        /* --- CALENDARIO GRID --- */
+        #contenedor-calendario { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); overflow: hidden; }
+        .month-title { background: var(--sidebar-bg); color: white; text-align: center; padding: 15px; font-size: 1.3rem; letter-spacing: 2px; flex-shrink: 0; }
+        
+        .calendar-headers { display: grid; grid-template-columns: repeat(7, 1fr); background: #f8fafc; border-bottom: 2px solid #e2e8f0; flex-shrink: 0; }
+        .day-header { padding: 12px 0; text-align: center; font-weight: 800; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; }
+
+        .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); flex: 1; }
+        
+        .day-cell { border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 10px 15px; display: flex; flex-direction: column; align-items: flex-end; position: relative; transition: background-color 0.2s; }
+        .day-cell:not(.empty):hover { background-color: #f8fafc; cursor: pointer; box-shadow: inset 0 0 0 2px var(--primary); z-index: 2; }
+        .weekend { background-color: #fcfcfd; color: #94a3b8; }
+        .empty { background-color: transparent; pointer-events: none; }
+        
+        .dia-numero { font-weight: 700; font-size: 1.2rem; color: var(--text-main); font-family: 'Montserrat', sans-serif; background: #f1f5f9; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+
+        .crossed-out .dia-numero { opacity: 0.5; }
+        .crossed-out { color: #94a3b8; }
+        .crossed-out::before, .crossed-out::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+        .crossed-out::before { background: linear-gradient(to bottom right, transparent 49%, rgba(239, 68, 68, 0.7) 49%, rgba(239, 68, 68, 0.7) 51%, transparent 51%); }
+        .crossed-out::after { background: linear-gradient(to top right, transparent 49%, rgba(239, 68, 68, 0.7) 49%, rgba(239, 68, 68, 0.7) 51%, transparent 51%); }
+
+        /* --- MODAL --- */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); }
+        .modal-content { background-color: var(--card-bg); margin: 3vh auto; padding: 30px; border-radius: 16px; width: 90%; max-width: 550px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); position: relative; max-height: 94vh; overflow-y: auto; }
+        .close { position: absolute; top: 20px; right: 25px; color: var(--text-muted); font-size: 28px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .close:hover { color: var(--secondary); transform: scale(1.1); }
+        .modal-title { color: var(--text-main); font-size: 1.5rem; margin-top: 0; margin-bottom: 25px; }
+        .modal-title span { color: var(--primary); }
+        
+        .agenda-grid { display: grid; grid-template-columns: 70px 1fr; gap: 15px; align-items: center; margin-bottom: 12px; }
+        .hora { font-weight: 700; color: var(--text-muted); text-align: right; font-size: 0.95rem; }
+        .cita-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; font-family: 'Nunito', sans-serif; transition: 0.2s; }
+        .cita-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+        
+        .btn-guardar { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-top: 20px; transition: 0.3s; font-family: 'Montserrat', sans-serif; }
+        .btn-guardar:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4); }
+
+        /* --- OTRAS SECCIONES --- */
+        .card-section { background: transparent; overflow-y: auto; gap: 20px; }
+        .card-section.active { display: flex; flex-direction: column; }
+        
+        .entrenamiento-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; flex-shrink: 0; }
+        .tipo-entreno { background: white; border: 2px solid transparent; padding: 25px 20px; text-align: center; border-radius: 16px; cursor: pointer; transition: 0.3s; font-weight: 800; font-size: 1.1rem; color: var(--text-main); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .tipo-entreno:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .tipo-entreno.selected { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+        
+        .lista-ejercicios { display: none; margin-top: 10px; padding: 25px; border-radius: 16px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-left: 6px solid var(--accent); }
+        .lista-ejercicios h3 { color: var(--text-main); margin-bottom: 15px; }
+        .lista-ejercicios ul { list-style: none; }
+        .lista-ejercicios li { padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 1.05rem; }
+        .lista-ejercicios li:last-child { border-bottom: none; }
+
+        /* --- SISTEMA DE PACIENTES INTEGRADO --- */
+        .cliente-grid { display: grid; grid-template-columns: 320px 1fr; gap: 25px; flex: 1; }
+        .lista-clientes { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-y: auto; max-height: 100%; display: flex; flex-direction: column; }
+        
+        .lista-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; }
+        .btn-add-paciente { 
+            width: 35px; height: 35px; border-radius: 50%; background: var(--primary); color: white; 
+            border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            font-size: 1rem; transition: 0.3s; box-shadow: 0 4px 6px rgba(99, 102, 241, 0.3); flex-shrink: 0;
+        }
+        .btn-add-paciente:hover { transform: scale(1.1) rotate(90deg); background: var(--primary-hover); }
+
+        .cliente-item { 
+            padding: 12px 15px; margin-bottom: 10px; background: #f8fafc; border-radius: 10px; 
+            font-weight: 600; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid #e2e8f0;
+        }
+        .cliente-item:hover { border-color: var(--primary); background: #eef2ff; }
+        
+        .cliente-nombre { flex: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .cliente-acciones { display: flex; gap: 8px; align-items: center; }
+        .cliente-edit-btn, .cliente-save-btn { 
+            background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.9rem; transition: 0.2s; padding: 4px;
+        }
+        .cliente-edit-btn:hover { color: var(--primary); transform: scale(1.15); }
+        .cliente-save-btn { color: var(--accent); display: none; }
+        .cliente-save-btn:hover { transform: scale(1.15); }
+
+        .input-editar-nombre { 
+            flex: 1; padding: 5px 8px; border: 1px solid var(--primary); border-radius: 6px; 
+            font-size: 0.95rem; font-family: 'Nunito', sans-serif; outline: none; background: white; display: none;
+        }
+
+        .ficha-cliente { display: none; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 700; margin-bottom: 8px; color: var(--text-muted); }
+        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Nunito', sans-serif; font-size: 1rem; transition: 0.2s;}
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1); }
+    </style>
+</head>
+<body>
+
+    <!-- MENÚ LATERAL -->
+    <div class="sidebar">
+        <button class="menu-btn active" onclick="mostrarSeccion('calendario', this)">
+            <i class="fas fa-calendar-check"></i> <span class="menu-text">Agenda</span>
+        </button>
+        <button class="menu-btn" onclick="mostrarSeccion('entrenamiento', this)">
+            <i class="fas fa-dumbbell"></i> <span class="menu-text">Rutinas</span>
+        </button>
+        <button class="menu-btn" onclick="mostrarSeccion('seguimiento', this)">
+            <i class="fas fa-users"></i> <span class="menu-text">Pacientes</span>
+        </button>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="content">
+        
+        <!-- SECCIÓN 1: CALENDARIO -->
+        <div id="calendario" class="section active">
+            <h1><i class="fas fa-calendar-alt"></i> Planificación Anual</h1>
+            <div id="selector-meses" class="month-selector"></div>
+            <div id="contenedor-calendario"></div>
+        </div>
+
+        <!-- SECCIÓN 2: ENTRENAMIENTOS -->
+        <div id="entrenamiento" class="section card-section">
+            <h1><i class="fas fa-dumbbell"></i> Biblioteca de Entrenamientos</h1>
+            <div class="entrenamiento-grid">
+                <div class="tipo-entreno" onclick="mostrarEjercicios('fuerza', this)">Fuerza Base</div>
+                <div class="tipo-entreno" onclick="mostrarEjercicios('cardio', this)">Cardio / HIIT</div>
+                <div class="tipo-entreno" onclick="mostrarEjercicios('mantenimiento', this)">Recomposición</div>
+                <div class="tipo-entreno" onclick="mostrarEjercicios('calentamiento', this)">Movilidad</div>
+            </div>
+
+            <div id="fuerza" class="lista-ejercicios">
+                <h3>Rutina de Fuerza (Acondicionamiento general)</h3>
+                <ul>
+                    <li><i class="fas fa-check-circle" style="color:var(--accent); margin-right:8px;"></i> 1. Press de banca (con barra o mancuernas) - 3x10</li>
+                    <li><i class="fas fa-check-circle" style="color:var(--accent); margin-right:8px;"></i> 2. Sentadilla Goblet o Prensa de piernas - 4x8</li>
+                    <li><i class="fas fa-check-circle" style="color:var(--accent); margin-right:8px;"></i> 3. Remo con mancuernas a una mano - 3x10/brazo</li>
+                    <li><i class="fas fa-check-circle" style="color:var(--accent); margin-right:8px;"></i> 4. Swings con Kettlebell (Trabajo de cadera) - 3x15</li>
+                    <li><i class="fas fa-check-circle" style="color:var(--accent); margin-right:8px;"></i> 5. Plancha abdominal (Core) - 3x45 seg</li>
+                </ul>
+            </div>
+            <div id="cardio" class="lista-ejercicios"><h3>Rutina de Cardio</h3><ul><li>Ejercicios de resistencia...</li></ul></div>
+            <div id="mantenimiento" class="lista-ejercicios"><h3>Recomposición Corporal</h3><ul><li>Circuitos metabólicos...</li></ul></div>
+            <div id="calentamiento" class="lista-ejercicios"><h3>Rutina de Movilidad</h3><ul><li>Activación pre-entreno...</li></ul></div>
+        </div>
+
+        <!-- SECCIÓN 3: SEGUIMIENTO INTEGRADO -->
+        <div id="seguimiento" class="section card-section">
+            <h1><i class="fas fa-users"></i> Gestión de Pacientes</h1>
+            <div class="cliente-grid">
+                <div class="lista-clientes">
+                    <div class="lista-header">
+                        <h3 style="color:var(--text-main); margin: 0;">Mis Pacientes</h3>
+                        <button class="btn-add-paciente" onclick="añadirPaciente()" title="Añadir nuevo paciente">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div id="contenedor-pacientes"></div>
+                </div>
+                
+                <div id="ficha" class="ficha-cliente">
+                    <h2 id="nombre-ficha" style="color:var(--primary); margin-bottom:20px; padding-bottom: 15px; border-bottom: 2px dashed #e2e8f0;">Nombre del Paciente</h2>
+                    <div class="form-group">
+                        <label>Peso Actual (kg):</label>
+                        <input type="number" id="ficha-peso" placeholder="Ej: 65.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Medidas (Cintura/Cadera en cm):</label>
+                        <input type="text" id="ficha-medidas" placeholder="Ej: 70 / 95">
+                    </div>
+                    <div class="form-group">
+                        <label>Fase Pautada:</label>
+                        <input type="text" id="ficha-fase" placeholder="Ej: Déficit Calórico">
+                    </div>
+                    <div class="form-group">
+                        <label>Observaciones:</label>
+                        <textarea id="ficha-notas" rows="4" placeholder="Escribe aquí evolución, lesiones, feedback..."></textarea>
+                    </div>
+                    <button class="btn-guardar" style="margin-top: 0;" onclick="guardarFicha()">Actualizar Ficha</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CITAS DEL CALENDARIO -->
+    <div id="modalAgenda" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal()">&times;</span>
+            <h2 class="modal-title" id="tituloModalAgenda"></h2>
+            <div id="contenedor-horas"></div>
+            <button class="btn-guardar" onclick="guardarAgendaDia()">Guardar Citas</button>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            inicializarCalendario();
+            renderizarPacientes();
+        };
+
+        function mostrarSeccion(id, btn) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function mostrarEjercicios(categoria, elemento) {
+            document.querySelectorAll('.lista-ejercicios').forEach(lista => lista.style.display = 'none');
+            document.querySelectorAll('.tipo-entreno').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById(categoria).style.display = 'block';
+            elemento.classList.add('selected');
+        }
+
+        // --- SISTEMA DE PACIENTES INTEGRADO ---
+        let pacientes = JSON.parse(localStorage.getItem('pacientes_lista')) || [
+            { id: 'p1', nombre: 'María López' },
+            { id: 'p2', nombre: 'Ana García' },
+            { id: 'p3', nombre: 'Carmen Ruiz' }
+        ];
+        let pacienteActualId = null;
+
+        function renderizarPacientes() {
+            const contenedor = document.getElementById('contenedor-pacientes');
+            contenedor.innerHTML = '';
+            
+            pacientes.forEach(paciente => {
+                contenedor.innerHTML += `
+                    <div class="cliente-item" id="item-${paciente.id}">
+                        <div class="cliente-nombre" id="label-${paciente.id}" onclick="abrirFicha('${paciente.id}')">${paciente.nombre}</div>
+                        <input type="text" class="input-editar-nombre" id="input-${paciente.id}" value="${paciente.nombre}">
+                        
+                        <div class="cliente-acciones">
+                            <button class="cliente-edit-btn" id="edit-btn-${paciente.id}" onclick="activarEdicion('${paciente.id}')" title="Editar nombre">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="cliente-save-btn" id="save-btn-${paciente.id}" onclick="guardarEdicion('${paciente.id}')" title="Guardar nombre">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Añadir detector de la tecla Enter a cada input generado
+            pacientes.forEach(paciente => {
+                let input = document.getElementById(`input-${paciente.id}`);
+                input.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter') {
+                        guardarEdicion(paciente.id);
+                    }
+                });
+            });
+        }
+
+        function añadirPaciente() {
+            let nombre = prompt("Introduce el nombre del nuevo paciente:");
+            if (nombre && nombre.trim() !== "") {
+                let nuevoId = 'p_' + Date.now();
+                pacientes.push({ id: nuevoId, nombre: nombre.trim() });
+                localStorage.setItem('pacientes_lista', JSON.stringify(pacientes));
+                renderizarPacientes();
+            }
+        }
+
+        function activarEdicion(id) {
+            document.getElementById(`label-${id}`).style.display = 'none';
+            let input = document.getElementById(`input-${id}`);
+            input.style.display = 'block';
+            input.focus();
+            input.select();
+
+            document.getElementById(`edit-btn-${id}`).style.display = 'none';
+            document.getElementById(`save-btn-${id}`).style.display = 'inline-block';
+        }
+
+        function guardarEdicion(id) {
+            let input = document.getElementById(`input-${id}`);
+            let nuevoNombre = input.value.trim();
+
+            if (nuevoNombre !== "") {
+                let paciente = pacientes.find(p => p.id === id);
+                paciente.nombre = nuevoNombre;
+                localStorage.setItem('pacientes_lista', JSON.stringify(pacientes));
+                renderizarPacientes();
+
+                if (pacienteActualId === id) {
+                    document.getElementById('nombre-ficha').innerText = nuevoNombre;
+                }
+            } else {
+                renderizarPacientes();
+            }
+        }
+
+        function abrirFicha(id) {
+            pacienteActualId = id;
+            let paciente = pacientes.find(p => p.id === id);
+            
+            document.getElementById('ficha').style.display = 'block';
+            document.getElementById('nombre-ficha').innerText = paciente.nombre;
+            
+            let datos = JSON.parse(localStorage.getItem('ficha_datos_' + id) || '{}');
+            document.getElementById('ficha-peso').value = datos.peso || '';
+            document.getElementById('ficha-medidas').value = datos.medidas || '';
+            document.getElementById('ficha-fase').value = datos.fase || '';
+            document.getElementById('ficha-notas').value = datos.notas || '';
+        }
+
+        function guardarFicha() {
+            if (!pacienteActualId) return;
+            
+            let datos = {
+                peso: document.getElementById('ficha-peso').value,
+                medidas: document.getElementById('ficha-medidas').value,
+                fase: document.getElementById('ficha-fase').value,
+                notas: document.getElementById('ficha-notas').value
+            };
+            
+            localStorage.setItem('ficha_datos_' + pacienteActualId, JSON.stringify(datos));
+            
+            const btn = document.querySelector('.ficha-cliente .btn-guardar');
+            let textoOriginal = btn.innerText;
+            btn.innerText = "¡Guardado!";
+            btn.style.background = "var(--accent)";
+            
+            setTimeout(() => {
+                btn.innerText = textoOriginal;
+                btn.style.background = "";
+            }, 1500);
+        }
+
+        // --- CALENDARIO ---
+        const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const mesesAbreviados = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+        
+        let anioActual = new Date().getFullYear();
+        let fechaActualSeleccionada = '';
+
+        function inicializarCalendario() {
+            renderizarBotonesMeses();
+            prepararModalHoras();
+            let mesActual = new Date().getMonth();
+            cargarMes(mesActual);
+        }
+
+        function renderizarBotonesMeses() {
+            const selector = document.getElementById('selector-meses');
+            selector.innerHTML = '';
+            for (let i = 0; i < 12; i++) {
+                let btn = document.createElement('button');
+                btn.className = 'month-btn';
+                btn.id = `btn-mes-${i}`;
+                btn.innerText = mesesAbreviados[i];
+                btn.onclick = () => cargarMes(i);
+                selector.appendChild(btn);
+            }
+        }
+
+        function cargarMes(mesIndex) {
+            document.querySelectorAll('.month-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-mes-${mesIndex}`).classList.add('active');
+
+            const contenedor = document.getElementById('contenedor-calendario');
+            let hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+
+            let primerDia = new Date(anioActual, mesIndex, 1).getDay();
+            let diasEnMes = new Date(anioActual, mesIndex + 1, 0).getDate();
+            let inicioSemana = primerDia === 0 ? 6 : primerDia - 1; 
+
+            let html = `
+                <div class="month-title">${nombresMeses[mesIndex].toUpperCase()} ${anioActual}</div>
+                <div class="calendar-headers">
+                    <div class="day-header">LUN</div><div class="day-header">MAR</div>
+                    <div class="day-header">MIÉ</div><div class="day-header">JUE</div>
+                    <div class="day-header">VIE</div><div class="day-header">SÁB</div>
+                    <div class="day-header">DOM</div>
+                </div>
+            `;
+            
+            let celdasTotales = 0;
+            let diasHtml = '';
+
+            for (let i = 0; i < inicioSemana; i++) { diasHtml += '<div class="day-cell empty"></div>'; celdasTotales++; }
+            
+            for (let dia = 1; dia <= diasEnMes; dia++) {
+                let diaSemana = celdasTotales % 7;
+                let esFinde = (diaSemana === 5 || diaSemana === 6) ? 'weekend' : '';
+                let fechaCelda = new Date(anioActual, mesIndex, dia);
+                let claseTachado = (fechaCelda < hoy) ? 'crossed-out' : '';
+                
+                diasHtml += `
+                    <div class="day-cell ${esFinde} ${claseTachado}" onclick="abrirModalAgenda(${dia}, ${mesIndex}, ${anioActual})">
+                        <div class="dia-numero">${dia}</div>
+                    </div>
+                `;
+                celdasTotales++;
+            }
+            
+            let celdasRestantes = (7 - (celdasTotales % 7)) % 7;
+            for (let i = 0; i < celdasRestantes; i++) { diasHtml += '<div class="day-cell empty"></div>'; celdasTotales++; }
+            
+            let totalSemanas = celdasTotales / 7;
+            html += `<div class="calendar-days" style="grid-template-rows: repeat(${totalSemanas}, 1fr);">${diasHtml}</div>`;
+            
+            contenedor.innerHTML = html;
+        }
+
+        function prepararModalHoras() {
+            const contenedorHoras = document.getElementById('contenedor-horas');
+            contenedorHoras.innerHTML = '';
+            for (let i = 8; i <= 21; i++) {
+                let horaFormateada = i.toString().padStart(2, '0') + ':00';
+                contenedorHoras.innerHTML += `
+                    <div class="agenda-grid">
+                        <div class="hora">${horaFormateada}</div>
+                        <input type="text" id="hora-${i}" class="cita-input" placeholder="Añadir paciente o tarea...">
+                    </div>
+                `;
+            }
+        }
+
+        function abrirModalAgenda(dia, mes, anio) {
+            fechaActualSeleccionada = `fecha_${anio}_${mes}_${dia}`;
+            document.getElementById('tituloModalAgenda').innerHTML = `Agenda: <span>${dia} de ${nombresMeses[mes]} ${anio}</span>`;
+            
+            let datosGuardados = JSON.parse(localStorage.getItem(fechaActualSeleccionada) || '{}');
+            for (let i = 8; i <= 21; i++) {
+                document.getElementById(`hora-${i}`).value = datosGuardados[`hora-${i}`] || '';
+            }
+            document.getElementById('modalAgenda').style.display = 'block';
+        }
+
+        function cerrarModal() { document.getElementById('modalAgenda').style.display = 'none'; }
+
+        function guardarAgendaDia() {
+            let datosDia = {};
+            for (let i = 8; i <= 21; i++) {
+                let valor = document.getElementById(`hora-${i}`).value.trim();
+                if (valor) datosDia[`hora-${i}`] = valor;
+            }
+            localStorage.setItem(fechaActualSeleccionada, JSON.stringify(datosDia));
+            cerrarModal();
+        }
+
+        window.onclick = function(event) { if (event.target == document.getElementById('modalAgenda')) cerrarModal(); }
+    </script>
+</body>
+</html>
